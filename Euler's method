@@ -1,0 +1,15 @@
+import math 
+
+functionXY = lambda x, y: math.exp(x)+1 #Enter a 1-2 variable function
+
+def Euler(func, step, current_X, current_Y, final_Y_value): 
+
+    next_X = current_X + step
+    next_Y = current_Y + (step)*func(current_X, current_Y)
+
+    if (current_X < final_Y_value-step):
+        return Euler(func, step, next_X, next_Y, final_Y_value)
+    else:
+        return (next_X, next_Y)
+
+print(Euler(functionXY, 0.1, 0, 1, 0.5))
