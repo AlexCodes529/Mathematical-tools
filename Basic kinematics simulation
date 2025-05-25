@@ -1,0 +1,146 @@
+#This is the homepage for my attempt at a 2D physics simulator built entirely in python.
+#I want to build this system to mimic several key basic elements of physics, and then maybe 
+#expand in later into more complex phenomena.
+
+import tkinter as tk
+import itertools as iter 
+import math
+root = tk.Tk()
+
+class SimulationCanvas():
+    #Settings for the initial simulation canvas
+    def __init__(self, width=300, height=300):
+        self.width = width
+        self.height = height
+        self.canvas = tk.Canvas(root, bg="white", height=self.height, width=self.width)
+
+    def showCanvas(self):
+        self.canvas.pack()
+
+
+
+#A class to handle all the attributes of an object placed within the simulation
+class Object(SimulationCanvas):
+    def __init__(self, canvas, objectType, radius=10, xLength = 10, yLength = 10, mass=10, xVelocity=0, yVelocity=0,
+                 color="black", outline="black"):
+        
+        #Setting up the canvas and other graphical charactertistics of the object
+        self.canvas = canvas
+        self.radius = radius
+        self.color = color
+        self.outline = outline
+        self.xLength = xLength
+        self.yLength = yLength
+
+        #General shape of the object and other geometrical properties
+        self.objectType = objectType
+
+        #Kinematics components
+        self.mass = int(mass) #Sets up initial mass. This determines the maximum height to which the object then rebounds.
+        self.gStrength = 0.5 #Sets up the rate of gravitational acceleration.
+        self.yVelocity = yVelocity #Initial y velocity so that it can be changed and cause the object to accelerate downwards.
+        self.xVelocity = xVelocity #Initialx x velocity do that it can be changed later.
+        self.gPotential = None #Placeholder for initial g potential energy.
+        self.kEnergy = None #Placeholder for initial kinetic energy.
+        self.y = 0 
+        self.x = 0
+        self.cOR = 0.75 #Coefficient of restitution: %Energy lost = 1- CoR^2.
+
+    #This places the object in its initial position set by the user
+    def positionOnScreen(self, centralCoords):
+        if self.objectType == "circle":
+            self.x = centralCoords[0]
+            self.y = centralCoords[1]
+            self.gPotential = self.mass*9.81*self.y
+            self.circle = self.canvas.create_oval(self.x-self.radius, self.y-self.radius,
+                                    self.x+self.radius, self.y+self.radius,
+                                    fill=self.color, outline=self.outline)
+            
+        if self.objectType == "rectangle":
+            self.x = centralCoords[0]
+            self.y = centralCoords[1]
+            self.gPotential = self.mass*9.81*self.y
+            self.rectangle = self.canvas.create_rectangle(self.x-self.xLength, self.y-self.yLength, 
+                                                       self.x+self.xLength, self.y+self.yLength, 
+                                                       fill=self.color, outline=self.outline)
+            
+
+    #This handles the movement of each object within the simulation 
+    def move(self):
+        canvasHeight = int(self.canvas['height'])
+        canvasWidth = int(self.canvas['width'])
+
+        self.yVelocity += self.gStrength
+        self.y += self.yVelocity
+
+        self.x += self.xVelocity
+
+        if self.objectType == "circle":
+            if self.y + self.radius >= canvasHeight:
+                self.y = canvasHeight-self.radius
+                self.yVelocity = -self.yVelocity*self.cOR
+
+            if abs(self.yVelocity) < 0.001:
+                self.yVelocity = 0
+
+            if self.x + self.radius >= canvasWidth:
+                self.x = canvasWidth-self.radius
+                self.xVelocity = -self.xVelocity*self.cOR
+
+            if self.x - self.radius <= 0:
+                self.x = self.radius
+                self.xVelocity = -self.xVelocity*self.cOR
+
+            self.canvas.coords(
+                self.circle,
+                self.x - self.radius, self.y - self.radius,
+                self.x + self.radius, self.y + self.radius
+            )
+
+        if self.objectType == "rectangle":
+            if self.y + self.yLength >= canvasHeight:
+                self.y = canvasHeight - self.yLength
+                self.yVelocity = -self.yVelocity * self.cOR
+
+            if abs(self.yVelocity) < 0.001:
+                self.yVelocity = 0
+
+            if self.x + self.xLength >= canvasWidth:
+                self.x = canvasWidth - self.xLength
+                self.xVelocity = -self.xVelocity * self.cOR
+
+            if self.x <= 0:
+                self.x = 0
+                self.xVelocity = -self.xVelocity * self.cOR
+
+            self.canvas.coords(
+                self.rectangle,
+                self.x, self.y,
+                self.x + self.xLength, self.y + self.yLength
+            )
+
+
+def collisionDetection(objects):
+        for obj1, obj2 in iter.combinations(objects, 2):
+            if (abs(obj1.x-obj2.x) <= 5) and (abs(obj1.y-obj2.y) <= 5):
+                obj1.xVelocity = -obj1.xVelocity*obj1.cOR
+                obj2.xVelocity = -obj2.xVelocity*obj2.cOR
+                obj1.yVelocity = -obj1.yVelocity*obj1.cOR
+                obj2.yVelocity = -obj2.yVelocity*obj2.cOR
+
+def animate(objects):
+    for obj in objects:
+        obj.move()
+    collisionDetection(objects)
+    root.after(20, lambda: animate(objects))
+      
+if __name__ == "__main__":
+    canvasWrapper = SimulationCanvas(500, 500)
+    testObject1 = Object(canvasWrapper.canvas, "circle", radius=10, mass= 20, xVelocity=5, yVelocity=-10, color="black", outline="black")
+    testObject1.positionOnScreen((50, 150))
+    testObject2 = Object(canvasWrapper.canvas, "circle", radius=10, xLength=10, yLength=10, mass=20, xVelocity=5, color="black", outline="black")
+    testObject2.positionOnScreen((200, 150))
+    canvasWrapper.showCanvas()
+    animate([testObject1, testObject2])
+    root.mainloop()
+
